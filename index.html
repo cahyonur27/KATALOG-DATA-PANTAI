@@ -1,0 +1,233 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>KATALOG DATA PANTAI</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <style>
+    html,body { height:100%; margin:0; font-family: Arial, sans-serif; }
+    body { display:flex; flex-direction:column; height:100vh; }
+
+    /* Header dengan logo + judul */
+    #title {
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      background:#003366;
+      color:#fff;
+      font-size:22px;
+      font-weight:bold;
+      padding:10px 16px;
+      letter-spacing:1px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+      z-index:1000;
+      position:sticky;
+      top:0;
+    }
+    #title img {
+      height:40px;
+      width:auto;
+    }
+
+    /* Container utama */
+    #app { flex:1 1 auto; display:flex; height:100%; }
+    #map { flex:1; }
+    #sidebar {
+      width:380px; max-width:40%; min-width:260px;
+      border-left:1px solid #ddd;
+      padding:12px; box-sizing:border-box;
+      overflow:auto; background:#fff;
+    }
+
+    .prov-header { font-size:18px; margin-bottom:6px; }
+    .dataset { padding:8px; border:1px solid #eee; margin-bottom:8px; border-radius:6px; }
+    .dataset h3 { margin:0 0 4px 0; font-size:15px; }
+    .controls { margin-bottom:10px; }
+    .small { font-size:12px; color:#555; }
+    a.open-link { display:inline-block; margin-top:6px; color:#0b66c3; text-decoration:none; }
+
+    /* Responsif untuk HP */
+    @media(max-width:768px){
+      #app { flex-direction:column; }
+      #sidebar {
+        width:100%; max-width:none; min-width:auto;
+        border-left:none; border-top:1px solid #ddd;
+        height:40%;
+      }
+      #map { height:60%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Judul dengan logo -->
+  <div id="title">
+    <img src="logo_PU.jpeg" alt="Logo PUPR" style="position:absolute; left:10px; height:40px"/>
+  <span style="margin:auto;">KATALOG DATA PANTAI</span>
+  </div>
+
+  <!-- Layout utama -->
+  <div id="app">
+    <div id="map"></div>
+    <div id="sidebar">
+      <div class="controls">
+        <input id="searchInput" placeholder="Cari dataset..." style="width:100%; padding:6px; box-sizing:border-box"/>
+      </div>
+      <div id="list"><p>Klik provinsi di peta untuk melihat daftar dataset.</p></div>
+    </div>
+  </div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <script>
+  // =========================
+  // GeoJSON Simplified Demo
+  // =========================
+  const provincesGeoJSON = {
+    "type":"FeatureCollection", "features": [
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[110.00352917500004,-7.888300978999951],[110.07748088400007,-7.916919943999972],[110.18299253300006,-7.96740540299993],[110.20573924100006,-7.983111751999957],[110.28053272800008,-8.011023523999938],[110.34482427200004,-8.030848598999967],[110.35618899700006,-8.053156399999978],[110.37553083500006,-8.07146287699993],[110.43061064700004,-8.089083883999933],[110.46719689800005,-8.110216332999926],[110.54059402000007,-8.132513320999976],[110.60394167800007,-8.14517223799993],[110.66206672200008,-8.17617278399996],[110.71885436800005,-8.199372223999944],[110.79341924000005,-8.193457120999938],[110.83493354700005,-8.203053695999927],[110.83838044600009,-8.180897215999948],[110.82869854200004,-8.16773109899998],[110.78561537200005,-8.150690371999929],[110.78953721600004,-8.11620172399995],[110.77550176800008,-8.065243967999947],[110.75563592200007,-8.02438024199995],[110.76589900800008,-7.988498392999929],[110.77149551800005,-7.942553231999966],[110.77049351600004,-7.904044139999939],[110.78294252500007,-7.870642240999928],[110.78558359300007,-7.816719380999928],[110.74109118900009,-7.805641082999955],[110.72104732900004,-7.792552469999976],[110.70850254500004,-7.805282106999925],[110.68167331100005,-7.806240155999944],[110.64956506900006,-7.792519435999964],[110.62671933500008,-7.802766485999939],[110.59875307600004,-7.800008829999967],[110.56361947700009,-7.78176025099998],[110.53107178000005,-7.797069345999944],[110.50740561400005,-7.768070669999929],[110.49177356700005,-7.766765996999936],[110.49181838700008,-7.742212560999974],[110.46847129000008,-7.637054087999957],[110.46854851500007,-7.61777346599996],[110.44522491200007,-7.541161558999931],[110.39128354200005,-7.594514821999951],[110.36568841400003,-7.615212496999959],[110.33882971100007,-7.628828784999939],[110.30364398200004,-7.655405712999936],[110.27395533500004,-7.70052093399994],[110.26392043200008,-7.682785638999974],[110.26383245300008,-7.646279335999964],[110.23875600800005,-7.653295875999959],[110.21238748800005,-7.646599754999954],[110.14991546000005,-7.647254916999941],[110.11555613300004,-7.673777456999971],[110.13195519500005,-7.68391395499998],[110.13115096700005,-7.739447282999947],[110.08933333300007,-7.795611109999982],[110.06366666800005,-7.812083333999965],[110.05868644000009,-7.835434766999981],[110.04286111100004,-7.865805554999952],[110.04159065400006,-7.884441684999956],[110.00352917500004,-7.888300978999951]]]},"properties":{"KODE_PROV":"34","PROVINSI":"Daerah Istimewa Yogyakarta"},"id":"34"}
+]};
+
+  // =========================
+  // Contoh Dataset Metadata
+  // =========================
+  const datasets = [
+    {
+      "province": "Daerah Istimewa Yogyakarta",
+      "dataset_name": "Survey Pantai Parangtritis",
+      "jenis": "Topografi",
+      "tahun": 2023,
+      "lat": -8.02,
+      "lon": 110.33,
+      "deskripsi": "Survey UAV di kawasan Parangtritis",
+      "url": "https://bigdata.balaipantai.com/share.cgi?ssid=45b0e9e7219c472a913e7ba249c0adb6"
+    },
+    {
+      "province": "Jawa Tengah",
+      "dataset_name": "Monitoring Jepara",
+      "jenis": "Batimetri",
+      "tahun": 2022,
+      "lat": -6.55,
+      "lon": 110.67,
+      "deskripsi": "Pengukuran batimetri Jepara",
+      "url": "https://contoh-link-data.com/jepara"
+    },
+    {
+      "province": "Bali",
+      "dataset_name": "Survey Pantai Kuta",
+      "jenis": "Monitoring Gelombang",
+      "tahun": 2021,
+      "lat": -8.72,
+      "lon": 115.17,
+      "deskripsi": "Monitoring gelombang di Pantai Kuta",
+      "url": "https://contoh-link-data.com/kuta"
+    }
+  ];
+
+  // =========================
+  // Inisialisasi Peta
+  // =========================
+  const map = L.map('map').setView([-2.5, 118], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OSM'
+  }).addTo(map);
+
+  let provinceLayer, markerGroup;
+  provinceLayer = L.geoJSON(provincesGeoJSON, {
+    style: styleProvince,
+    onEachFeature: onEachProvince
+  }).addTo(map);
+  map.fitBounds(provinceLayer.getBounds());
+
+  function styleProvince(feature) {
+    return {
+      fillColor: '#91c7ff',
+      weight: 1,
+      opacity: 1,
+      color: '#3b7dd8',
+      fillOpacity: 0.4
+    };
+  }
+
+  function onEachProvince(feature, layer) {
+    const name = feature.properties.PROVINSI || 'Unknown';
+    layer.bindTooltip(name, {sticky:true});
+    layer.on('click', () => {
+      onProvinceClick(name);
+    });
+  }
+
+  // Klik Provinsi
+  function onProvinceClick(provName) {
+    const list = datasets.filter(d => d.province === provName);
+    renderSidebarList(list, provName);
+
+    if (markerGroup) map.removeLayer(markerGroup);
+    markerGroup = L.markerClusterGroup();
+
+    list.forEach(item => {
+      if (item.lat && item.lon) {
+        const m = L.marker([item.lat, item.lon]);
+        m.bindPopup(`<strong>${escapeHtml(item.dataset_name)}</strong><br>${escapeHtml(item.jenis)} • ${item.tahun}<br><a href="${item.url}" target="_blank" rel="noopener">Buka data</a>`);
+        markerGroup.addLayer(m);
+      }
+    });
+
+    if (markerGroup.getLayers().length > 0) {
+      map.addLayer(markerGroup);
+      const bounds = markerGroup.getBounds();
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.3), { maxZoom: 10 });
+    }
+  }
+
+  // Sidebar List
+  function renderSidebarList(list, provName) {
+    const el = document.getElementById('list');
+    if (!list.length) {
+      el.innerHTML = `<div class="prov-header">${provName}</div><p class="small">Tidak ada dataset terdaftar.</p>`;
+      return;
+    }
+    const html = [`<div class="prov-header">${provName} — ${list.length} dataset</div>`];
+    list.forEach(item => {
+      html.push(`<div class="dataset">
+        <h3>${escapeHtml(item.dataset_name)}</h3>
+        <div class="small">${escapeHtml(item.jenis)} • ${item.tahun}</div>
+        <p class="small">${escapeHtml(item.deskripsi || '')}</p>
+        <a class="open-link" href="${item.url}" target="_blank" rel="noopener">Buka data</a>
+      </div>`);
+    });
+    el.innerHTML = html.join('');
+  }
+
+  // Search Box
+  document.getElementById('searchInput').addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    if (!q) {
+      document.getElementById('list').innerHTML = '<p>Klik provinsi di peta untuk melihat daftar dataset.</p>';
+      return;
+    }
+    const found = datasets.filter(d => (d.dataset_name + ' ' + d.deskripsi + ' ' + d.jenis).toLowerCase().includes(q));
+    const el = document.getElementById('list');
+    if (!found.length) el.innerHTML = `<p class="small">Tidak ada hasil untuk "<strong>${escapeHtml(q)}</strong>".</p>`;
+    else {
+      const header = `<div class="prov-header">Hasil pencarian — ${found.length} item</div>`;
+      const body = found.map(item => `<div class="dataset"><h3>${escapeHtml(item.dataset_name)}</h3><div class="small">${escapeHtml(item.province)} • ${escapeHtml(item.jenis)}</div><a class="open-link" href="${item.url}" target="_blank">Buka data</a></div>`).join('');
+      el.innerHTML = header + body;
+    }
+    if (markerGroup) { map.removeLayer(markerGroup); markerGroup = null; }
+  });
+
+  function escapeHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  </script>
+</body>
+</html>
+
